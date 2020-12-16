@@ -1,10 +1,205 @@
 const {
+  Hbar,
   TokenCreateTransaction,
   TokenMintTransaction,
   AccountBalanceQuery,
+  TransferTransaction,
+  FileCreateTransaction,
+  FileContentsQuery,
+  FileAppendTransaction,
+  PrivateKey,
+  AccountCreateTransaction,
+  TokenAssociateTransaction,
 } = require("@hashgraph/sdk");
+const CryptoJS = require("crypto-js");
 
 const log = require("./logger");
+
+const publicKeyPrefix = "302a300506032b6570032100";
+
+function generateKeys() {
+  const privateKey = PrivateKey.generate();
+  const publicKey = privateKey.publicKey;
+
+  return {
+    privateKey,
+    publicKey,
+  };
+}
+
+async function createNewAccount({ client }) {
+  const { privateKey } = generateKeys();
+
+  //Create the transaction
+  const transaction = new AccountCreateTransaction().setKey(
+    privateKey.publicKey
+  );
+
+  //Sign the transaction with the client operator private key and submit to a Hedera network
+  const txResponse = await transaction.execute(client);
+
+  //Request the receipt of the transaction
+  const receipt = await txResponse.getReceipt(client);
+
+  //Get the account ID
+  const newAccountId = receipt.accountId;
+
+  return {
+    accountId: newAccountId,
+    privateKey,
+  };
+}
+
+async function associateTokenToAccount(
+  mintyToken,
+  { accountId, privateKey },
+  { client }
+) {
+  //Associate a token to an account and freeze the unsigned transaction for signing
+  const transaction = await new TokenAssociateTransaction()
+    .setAccountId(accountId)
+    .setTokenIds([mintyToken])
+    .freezeWith(client);
+
+  //Sign with the private key of the account that is being associated to a token
+  const signTx = await transaction.sign(privateKey);
+
+  //Submit the transaction to a Hedera network
+  const txResponse = await signTx.execute(client);
+
+  //Request the receipt of the transaction
+  const receipt = await txResponse.getReceipt(client);
+
+  //Get the transaction consensus status
+  const transactionStatus = receipt.status;
+
+  console.log(
+    "The transaction consensus status " + transactionStatus.toString()
+  );
+}
+
+async function createAndWriteUser(twitterId, mintyToken, hederaCreds) {
+  const user = await createNewAccount(hederaCreds);
+  await associateTokenToAccount(mintyToken, user, hederaCreds);
+  const userObject = {
+    hederaId: user.accountId.toString(),
+    privateKey: user.privateKey.toString(),
+    twitterId,
+  };
+
+  const lineItem = generateFileLineFromUserAccount(
+    userObject,
+    hederaCreds.filePrivateKey
+  );
+
+  await appendToFile(lineItem, hederaCreds);
+
+  const users = await getUserTableFromFile(hederaCreds);
+
+  return users[twitterId];
+}
+
+async function upsertTransferWithTwitterId(
+  twitterId,
+  amount,
+  mintyToken,
+  hederaCreds
+) {
+  const userTable = getUserTableFromFile(hederaCreds);
+  let user = userTable[twitterId];
+  if (!user) {
+    // Create user and write to file
+    user = await createAndWriteUser(twitterId, mintyToken, hederaCreds);
+  }
+
+  await transferTokens(mintyToken, amount, user.hederaId, hederaCreds);
+}
+
+async function createFile({ filePublicKey, filePrivateKey }, { client }) {
+  //Create the transaction
+  const transaction = await new FileCreateTransaction()
+    .setKeys([filePublicKey]) //A different key then the client operator key
+    .setContents("")
+    .setMaxTransactionFee(new Hbar(2))
+    .freezeWith(client);
+
+  //Sign with the file private key
+  const signTx = await transaction.sign(filePrivateKey);
+
+  //Sign with the client operator private key and submit to a Hedera network
+  const submitTx = await signTx.execute(client);
+
+  //Request the receipt
+  const receipt = await submitTx.getReceipt(client);
+
+  //Get the file ID
+  const newFileId = receipt.fileId;
+
+  return newFileId;
+}
+
+async function getFileContents({ client, fileId }) {
+  //Create the query
+  const query = new FileContentsQuery().setFileId(fileId);
+
+  //Sign with client operator private key and submit the query to a Hedera network
+  const contents = await query.execute(client);
+
+  return contents.toString();
+}
+
+async function appendToFile(line, { fileId, client, filePrivateKey }) {
+  //Create the transaction
+  const transaction = await new FileAppendTransaction()
+    .setFileId(fileId)
+    .setContents(line)
+    .setMaxTransactionFee(new Hbar(2))
+    .freezeWith(client);
+
+  //Sign with the file private key
+  const signTx = await transaction.sign(filePrivateKey);
+
+  //Sign with the client operator key and submit to a Hedera network
+  const txResponse = await signTx.execute(client);
+
+  //Request the receipt
+  const receipt = await txResponse.getReceipt(client);
+
+  //Get the transaction consensus status
+  const transactionStatus = receipt.status;
+
+  console.log("The transaction consensus status is " + transactionStatus);
+}
+
+function generateFileLineFromUserAccount(
+  { twitterId, privateKey, hederaId },
+  key
+) {
+  const special = encrypt(privateKey, key);
+  const value = {
+    twitterId,
+    hederaId,
+    special,
+  };
+
+  return `"${twitterId}": ${JSON.stringify(value)},`;
+}
+
+async function getUserTableFromFile(hederaCreds) {
+  const fileContent = await getFileContents(hederaCreds);
+
+  return JSON.parse(`{ ${fileContent.replace(/,\s*$/, "")} }`);
+}
+
+function encrypt(message, key) {
+  return CryptoJS.AES.encrypt(message, key).toString();
+}
+
+function decript(encrypted, key) {
+  console.log(encrypted);
+  console.log(key);
+  return CryptoJS.AES.decrypt(encrypted, key);
+}
 
 async function makeToken(
   tokenName,
@@ -69,6 +264,38 @@ async function addToToken(tokenId, amount, { client, myPrivateKey }) {
   );
 }
 
+async function transferTokens(
+  tokenId,
+  amount,
+  transferToId,
+  { client, myAccountId, myPrivateKey }
+) {
+  log.info(
+    `Transfering ${amount} tokens (${tokenId}) from ${myAccountId} to ${transferToId}`
+  );
+  //Create the transfer transaction
+  const transaction = await new TransferTransaction()
+    .addTokenTransfer(tokenId, myAccountId, -1 * amount)
+    .addTokenTransfer(tokenId, transferToId, amount)
+    .freezeWith(client);
+
+  //Sign with the sender account private key
+  const signTx = await transaction.sign(myPrivateKey);
+
+  //Sign with the client operator private key and submit to a Hedera network
+  const txResponse = await signTx.execute(client);
+
+  //Request the receipt of the transaction
+  const receipt = await txResponse.getReceipt(client);
+
+  //Obtain the transaction consensus status
+  const transactionStatus = receipt.status;
+
+  console.log(
+    "The transaction consensus status " + transactionStatus.toString()
+  );
+}
+
 async function getTokenTotal(accountId, { client }) {
   const query = new AccountBalanceQuery().setAccountId(accountId);
 
@@ -77,11 +304,34 @@ async function getTokenTotal(accountId, { client }) {
 
   console.log("The token balance(s) for this account: " + tokenBalance.tokens);
 
-  return tokenBalance;
+  return tokenBalance.tokens;
+}
+
+async function getTokenTotalForTwitterId(twitterId, hederaCreds) {
+  const userTable = getUserTableFromFile(hederaCreds);
+  const user = userTable[twitterId];
+
+  if (!user) {
+    return 0;
+  }
+  return await getTokenTotal(user.hederaId, hederaCreds);
 }
 
 module.exports = {
   makeToken,
   addToToken,
   getTokenTotal,
+  transferTokens,
+  generateKeys,
+  createFile,
+  getFileContents,
+  appendToFile,
+  generateFileLineFromUserAccount,
+  encrypt,
+  decript,
+  getUserTableFromFile,
+  createNewAccount,
+  associateTokenToAccount,
+  upsertTransferWithTwitterId,
+  getTokenTotalForTwitterId,
 };

@@ -18,6 +18,9 @@ const getHederaCreds = () => {
     myAccountId: process.env.MY_ACCOUNT_ID,
     myPrivateKey: PrivateKey.fromString(process.env.MY_PRIVATE_KEY || ""),
     myPublicKey: PublicKey.fromString(process.env.MY_PUBLIC_KEY),
+    filePrivateKey: PrivateKey.fromString(process.env.FILE_PRIVATE_KEY),
+    filePublicKey: PublicKey.fromString(process.env.FILE_PUBLIC_KEY),
+    fileId: process.env.FILE_ID,
   };
 
   // If we weren't able to grab it, we should throw a new error
@@ -38,6 +41,8 @@ const getHederaCreds = () => {
 
 const getRandomConfig = () => ({
   mintyToken: process.env.MINTED_TOKEN,
+  treasureHandle: process.env.TREASURE_TWITTER_HANDLE,
+  ourTwitterHandle: process.env.OUR_TWITTER_HANDLE,
 });
 
 module.exports = {
