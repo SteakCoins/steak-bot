@@ -23,7 +23,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
     const userObj = tweetObj.includes.users.filter(
       (user) => user.id === tweetObj.data.author_id
     )[0];
-    log.info(`Replying to:  ${userObj}`);
+    log.info(`Replying to:  ${userObj.username}`);
     if (userObj.username === randomConfig.treasureHandle) {
       const reply = {
         tweetId: tweetObj.data.id,
@@ -32,29 +32,29 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
       addToToken(randomConfig.mintyToken, 100, hederaCreds);
       replyToTweet(reply, twitterCreds);
     } else {
+      log.info(`Transfering the moneys`);
       await upsertTransferWithTwitterId(
         userObj.id,
         1,
         randomConfig.mintyToken,
         hederaCreds
       );
-      const tokenAmount =
-        (await getTokenTotalForTwitterId(userObj.id, hederaCreds).get(
-          randomConfig.mintyToken
-        ).low) || 0;
+
+      const tokens = await getTokenTotalForTwitterId(userObj.id, hederaCreds);
+      const token = tokens[randomConfig.mintyToken];
+      console.info(`${userObj.username} has ${token}`);
 
       const reply = {
         tweetId: tweetObj.data.id,
-        status: `Thanks for your order! You now have ${tokenAmount} Steaks!`,
+        status: `Thanks for your order! You now have ${token} Steaks!`,
       };
-    }
-    log.info(json);
-    log.info(json.includes.users);
 
-    // addToToken(randomConfig.mintyToken, 100, hederaCreds);
-    // replyToTweet(reply, twitterCreds);
-  } catch (e) {
+      log.info(`Replying with message: ${reply.status}`);
+      replyToTweet(reply, twitterCreds);
+    }
+  } catch (err) {
     // Keep alive signal received. Do nothing.
+    // console.error(err);
   }
 };
 

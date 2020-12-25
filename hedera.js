@@ -79,7 +79,9 @@ async function associateTokenToAccount(
 }
 
 async function createAndWriteUser(twitterId, mintyToken, hederaCreds) {
+  log.info(`Creating hedera wallet for user...`);
   const user = await createNewAccount(hederaCreds);
+  log.info(`Associating token to wallet...`);
   await associateTokenToAccount(mintyToken, user, hederaCreds);
   const userObject = {
     hederaId: user.accountId.toString(),
@@ -89,9 +91,10 @@ async function createAndWriteUser(twitterId, mintyToken, hederaCreds) {
 
   const lineItem = generateFileLineFromUserAccount(
     userObject,
-    hederaCreds.filePrivateKey
+    hederaCreds.filePrivateKey.toString()
   );
 
+  log.info(`appending user to user file...`);
   await appendToFile(lineItem, hederaCreds);
 
   const users = await getUserTableFromFile(hederaCreds);
@@ -105,9 +108,12 @@ async function upsertTransferWithTwitterId(
   mintyToken,
   hederaCreds
 ) {
-  const userTable = getUserTableFromFile(hederaCreds);
+  log.info(`Upserting for ${twitterId}`);
+  const userTable = await getUserTableFromFile(hederaCreds);
+
   let user = userTable[twitterId];
   if (!user) {
+    log.info(`${twitterId} was not found. Creating account.`);
     // Create user and write to file
     user = await createAndWriteUser(twitterId, mintyToken, hederaCreds);
   }
@@ -175,6 +181,8 @@ function generateFileLineFromUserAccount(
   { twitterId, privateKey, hederaId },
   key
 ) {
+  log.info(`Generating user object to write`);
+
   const special = encrypt(privateKey, key);
   const value = {
     twitterId,
@@ -304,11 +312,11 @@ async function getTokenTotal(accountId, { client }) {
 
   console.log("The token balance(s) for this account: " + tokenBalance.tokens);
 
-  return tokenBalance.tokens;
+  return JSON.parse(tokenBalance.tokens.toString());
 }
 
 async function getTokenTotalForTwitterId(twitterId, hederaCreds) {
-  const userTable = getUserTableFromFile(hederaCreds);
+  const userTable = await getUserTableFromFile(hederaCreds);
   const user = userTable[twitterId];
 
   if (!user) {
