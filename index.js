@@ -97,7 +97,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
 
 const express = require("express");
 const app = express();
-const port = 80;
+const port = process.env.PORT || 80;
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
