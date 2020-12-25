@@ -2,11 +2,15 @@
   "engines": {
     "node": ">=14.0.0"
   },
+  "scripts": {
+    "start": "pm2-runtime start ecosystem.config.js --env production"
+  },
   "dependencies": {
     "@hashgraph/sdk": "^2.0.9",
     "crypto-js": "^4.0.0",
     "dotenv": "^8.2.0",
     "needle": "^2.5.2",
-    "oauth": "^0.9.15"
+    "oauth": "^0.9.15",
+    "pm2": "^4.5.1"
   }
 }
