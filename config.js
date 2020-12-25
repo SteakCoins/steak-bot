@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { Client, PrivateKey, PublicKey } = require("@hashgraph/sdk");
+const { Client, PrivateKey, PublicKey, Hbar } = require("@hashgraph/sdk");
 
 const getTwitterCreds = () => ({
   token: {
@@ -32,6 +32,7 @@ const getHederaCreds = () => {
   const client = Client.forTestnet();
 
   client.setOperator(creds.myAccountId, creds.myPrivateKey);
+  client.setMaxTransactionFee(new Hbar(20));
 
   return {
     client,

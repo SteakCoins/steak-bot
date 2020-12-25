@@ -108,10 +108,6 @@ async function setRules(rules, { bearerToken }) {
 
 function streamConnect({ bearerToken }) {
   log.info("Connecting to stream...");
-  //Listen to the stream
-  const options = {
-    timeout: 20000,
-  };
 
   const params = {
     expansions: "author_id",
@@ -119,17 +115,12 @@ function streamConnect({ bearerToken }) {
     "user.fields": "id,name,username",
   };
 
-  const stream = needle.request(
-    "get",
-    streamURL,
-    params,
-    {
-      headers: {
-        Authorization: `Bearer ${bearerToken}`,
-      },
+  const stream = needle.request("get", streamURL, params, {
+    headers: {
+      Authorization: `Bearer ${bearerToken}`,
     },
-    options
-  );
+    timeout: 20000,
+  });
 
   return stream;
 }

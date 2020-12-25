@@ -54,7 +54,9 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
     }
   } catch (err) {
     // Keep alive signal received. Do nothing.
-    // console.error(err);
+    if (err.name !== `SyntaxError`) {
+      console.error(err);
+    }
   }
 };
 
@@ -75,13 +77,15 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
 
   const filteredStream = streamConnect(twitterCreds);
 
-  filteredStream
-    .on("data", replyToData(twitterCreds, hederaCreds, randomConfig))
-    .on("error", (error) => {
-      if (error.code === "ETIMEDOUT") {
-        stream.emit("timeout");
-      }
-    });
+  filteredStream.on(
+    "data",
+    replyToData(twitterCreds, hederaCreds, randomConfig)
+  );
+  filteredStream.on("error", (error) => {
+    if (error.code === "ETIMEDOUT") {
+      stream.emit("timeout");
+    }
+  });
 
   let timeout = 0;
   filteredStream.on("timeout", () => {

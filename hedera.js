@@ -44,6 +44,8 @@ async function createNewAccount({ client }) {
   //Get the account ID
   const newAccountId = receipt.accountId;
 
+  log.info(`Created user: ${newAccountId}`);
+
   return {
     accountId: newAccountId,
     privateKey,
@@ -126,7 +128,7 @@ async function createFile({ filePublicKey, filePrivateKey }, { client }) {
   const transaction = await new FileCreateTransaction()
     .setKeys([filePublicKey]) //A different key then the client operator key
     .setContents("")
-    .setMaxTransactionFee(new Hbar(2))
+    .setMaxTransactionFee(new Hbar(200))
     .freezeWith(client);
 
   //Sign with the file private key
@@ -159,7 +161,7 @@ async function appendToFile(line, { fileId, client, filePrivateKey }) {
   const transaction = await new FileAppendTransaction()
     .setFileId(fileId)
     .setContents(line)
-    .setMaxTransactionFee(new Hbar(2))
+    .setMaxTransactionFee(new Hbar(200))
     .freezeWith(client);
 
   //Sign with the file private key
