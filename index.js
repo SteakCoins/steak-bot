@@ -56,6 +56,8 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
     // Keep alive signal received. Do nothing.
     if (err.name !== `SyntaxError`) {
       console.error(err);
+    } else {
+      console.log("Keep alive...");
     }
   }
 };
