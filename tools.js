@@ -13,13 +13,16 @@ const {
   getTokenTotal,
   getTokenTotalForTwitterId,
   upsertTransferWithTwitterId,
+  getTokenSupply,
 } = require("./hedera");
 
 (async () => {
   const hederaCreds = getHederaCreds();
   const { mintyToken } = getRandomConfig();
 
-  upsertTransferWithTwitterId("12334", 2, mintyToken, hederaCreds);
+  console.log(getTokenSupply(mintyToken, hederaCreds));
+
+  // upsertTransferWithTwitterId("12334", 2, mintyToken, hederaCreds);
 
   // console.log((await getTokenTotal("0.0.154794", hederaCreds))["0.0.145669"]);
 

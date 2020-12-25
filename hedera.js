@@ -10,6 +10,7 @@ const {
   PrivateKey,
   AccountCreateTransaction,
   TokenAssociateTransaction,
+  TokenInfoQuery,
 } = require("@hashgraph/sdk");
 const CryptoJS = require("crypto-js");
 
@@ -121,6 +122,8 @@ async function upsertTransferWithTwitterId(
   }
 
   await transferTokens(mintyToken, amount, user.hederaId, hederaCreds);
+
+  return user;
 }
 
 async function createFile({ filePublicKey, filePrivateKey }, { client }) {
@@ -327,6 +330,17 @@ async function getTokenTotalForTwitterId(twitterId, hederaCreds) {
   return await getTokenTotal(user.hederaId, hederaCreds);
 }
 
+async function getTokenSupply(mintyToken, { client }) {
+  const query = new TokenInfoQuery().setTokenId(mintyToken);
+
+  //Sign with the client operator private key, submit the query to the network and get the token supply
+  const tokenSupply = (await query.execute(client)).totalSupply;
+
+  console.log("The total supply of this token is " + tokenSupply);
+
+  return tokenSupply;
+}
+
 module.exports = {
   makeToken,
   addToToken,
@@ -344,4 +358,5 @@ module.exports = {
   associateTokenToAccount,
   upsertTransferWithTwitterId,
   getTokenTotalForTwitterId,
+  getTokenSupply,
 };

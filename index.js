@@ -11,6 +11,7 @@ const {
   addToToken,
   upsertTransferWithTwitterId,
   getTokenTotalForTwitterId,
+  getTokenSupply,
 } = require("./hedera");
 
 const { mintyToken } = getRandomConfig();
@@ -33,7 +34,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
       replyToTweet(reply, twitterCreds);
     } else {
       log.info(`Transfering the moneys`);
-      await upsertTransferWithTwitterId(
+      const user = await upsertTransferWithTwitterId(
         userObj.id,
         1,
         randomConfig.mintyToken,
@@ -41,18 +42,23 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
       );
 
       const tokens = await getTokenTotalForTwitterId(userObj.id, hederaCreds);
+      const tokenTotal = await getTokenSupply(
+        randomConfig.mintyToken,
+        hederaCreds
+      );
       const token = tokens[randomConfig.mintyToken];
       console.info(`${userObj.username} has ${token}`);
 
       const reply = {
         tweetId: tweetObj.data.id,
-        status: `Thanks for your order! You now have ${token} Steaks!`,
+        status: `Thanks for your order @${userObj.username}! You now have ${token} Steaks! (Out of ${tokenTotal}) ~ ${user.hederaId}`,
       };
 
       log.info(`Replying with message: ${reply.status}`);
       replyToTweet(reply, twitterCreds);
     }
   } catch (err) {
+    // console.log(err);
     // Keep alive signal received. Do nothing.
     if (err.name !== `SyntaxError`) {
       console.error(err);
