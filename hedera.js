@@ -14,7 +14,7 @@ const {
 } = require("@hashgraph/sdk");
 const CryptoJS = require("crypto-js");
 
-const log = require("./logger");
+const log = require("./logger")(module);
 
 const publicKeyPrefix = "302a300506032b6570032100";
 

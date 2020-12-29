@@ -1,4 +1,4 @@
-const log = require("./logger");
+const log = require("./logger")(module);
 const {
   getTwitterCreds,
   getHederaCreds,
@@ -21,7 +21,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
 ) => {
   try {
     const tweetObj = JSON.parse(data);
-    const userObj = tweetObj.includes.users.filter(
+    const userObj = tweetObj?.includes?.users?.filter(
       (user) => user.id === tweetObj.data.author_id
     )[0];
     log.info(`Replying to:  ${userObj.username}`);
@@ -47,7 +47,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
         hederaCreds
       );
       const token = tokens[randomConfig.mintyToken];
-      console.info(`${userObj.username} has ${token}`);
+      log.info(`${userObj.username} has ${token}`);
 
       const reply = {
         tweetId: tweetObj.data.id,
@@ -58,12 +58,12 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
       replyToTweet(reply, twitterCreds);
     }
   } catch (err) {
-    // console.log(err);
+    log.debug(err);
     // Keep alive signal received. Do nothing.
     if (err.name !== `SyntaxError`) {
-      console.error(err);
+      log.error(err);
     } else {
-      console.log("Keep alive...");
+      log.info("Keep alive...");
     }
   }
 };
@@ -76,7 +76,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
     { value: `@${randomConfig.ourTwitterHandle} -is:retweet` },
   ];
 
-  console.log(rules);
+  log.info(rules);
 
   const twitterCreds = getTwitterCreds();
   const hederaCreds = getHederaCreds();
@@ -116,5 +116,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
+  log.info(`Example app listening at http://localhost:${port}`);
 });

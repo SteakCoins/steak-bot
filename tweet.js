@@ -1,7 +1,7 @@
 const needle = require("needle");
 const OAuth = require("oauth");
 
-var log = require("./logger");
+var log = require("./logger")(module);
 
 const rulesURL = "https://api.twitter.com/2/tweets/search/stream/rules";
 const sendTweetURL = "https://api.twitter.com/1.1/statuses/update.json";
