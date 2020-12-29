@@ -17,7 +17,8 @@ const getHederaCreds = () => {
   const creds = {
     myAccountId: process.env.MY_ACCOUNT_ID,
     myPrivateKey: PrivateKey.fromString(process.env.MY_PRIVATE_KEY || ""),
-    myPublicKey: PublicKey.fromString(process.env.MY_PUBLIC_KEY),
+    myPublicKey: PrivateKey.fromString(process.env.MY_PRIVATE_KEY || "")
+      .publicKey,
     filePrivateKey: PrivateKey.fromString(process.env.FILE_PRIVATE_KEY),
     filePublicKey: PublicKey.fromString(process.env.FILE_PUBLIC_KEY),
     fileId: process.env.FILE_ID,
@@ -29,7 +30,7 @@ const getHederaCreds = () => {
       "Environment variables myAccountId and myPrivateKey must be present"
     );
   }
-  const client = Client.forTestnet();
+  const client = Client.forMainnet();
 
   client.setOperator(creds.myAccountId, creds.myPrivateKey);
   client.setMaxTransactionFee(new Hbar(20));

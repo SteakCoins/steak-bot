@@ -1,9 +1,16 @@
-const { getHederaCreds, getRandomConfig } = require("./config");
+const {
+  getHederaCreds,
+  getRandomConfig,
+  getTwitterCreds,
+} = require("./config");
+
+const { retweetAndTweet, replyToTweet, sendDirectMessage } = require("./tweet");
 const {
   getFileContents,
   appendToFile,
   generateKeys,
   generateFileLineFromUserAccount,
+  encrypt,
   decript,
   createFile,
   getUserTableFromFile,
@@ -14,13 +21,66 @@ const {
   getTokenTotalForTwitterId,
   upsertTransferWithTwitterId,
   getTokenSupply,
+  makeToken,
 } = require("./hedera");
 
-(async () => {
-  const hederaCreds = getHederaCreds();
-  const { mintyToken } = getRandomConfig();
+const CryptoJS = require("crypto-js");
 
-  console.log(getTokenSupply(mintyToken, hederaCreds));
+(async () => {
+  const twitterCreds = getTwitterCreds();
+  const hederaCreds = getHederaCreds();
+
+  const userTable = await getUserTableFromFile(hederaCreds);
+
+  const DMObj = {
+    twitterId: "377793153",
+    message: "hello bro",
+  };
+  await sendDirectMessage(DMObj, twitterCreds);
+
+  // console.log(userTable["1339093484376973312"]);
+
+  // console.log(
+  //   decript(
+  //     userTable["1339093484376973312"].special,
+  //     hederaCreds.filePrivateKey.toString()
+  //   ).toString(CryptoJS.enc.Utf8)
+  // );
+
+  // console.log(
+  //   encrypt(
+  //     hederaCreds.myPrivateKey.toString(),
+  //     hederaCreds.filePrivateKey.toString()
+  //   )
+  // );
+
+  // const enc = encrypt(
+  //   hederaCreds.myPrivateKey.toString(),
+  //   hederaCreds.filePrivateKey.toString()
+  // ).toString();
+
+  // console.log(
+  //   decript(
+  //     "U2FsdGVkX1/ryj2+0XIhsBC8LvCs80jPbdLsWpVVe53VdlGx6Qlh+62elrAPs3OOVr2c6PZCQS5W5JpH/ws9BgiONfgq66mvDJvuRMtHOBSj/C+CS36H+9tRqKs6odbYMHAONhlJyVaqrzR9mWmqBYWztFFhidz2IiaAN/0fUds=",
+  //     hederaCreds.filePrivateKey.toString()
+  //   ).toString(CryptoJS.enc.Utf8)
+  // );
+
+  // console.log(decript(enc, hederaCreds.filePrivateKey.toString()).toString());
+  // const { mintyToken } = getRandomConfig();
+
+  // console.log(
+  //   await upsertTransferWithTwitterId(
+  //     "1344241334694064129",
+  //     1,
+  //     mintyToken,
+  //     hederaCreds
+  //   )
+  // );
+  // console.log(await createFile(hederaCreds, hederaCreds));
+  // const { mintyToken } = getRandomConfig();
+
+  // console.log(getTokenSupply(mintyToken, hederaCreds));
 
   // upsertTransferWithTwitterId("12334", 2, mintyToken, hederaCreds);
 

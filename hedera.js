@@ -209,8 +209,6 @@ function encrypt(message, key) {
 }
 
 function decript(encrypted, key) {
-  console.log(encrypted);
-  console.log(key);
   return CryptoJS.AES.decrypt(encrypted, key);
 }
 

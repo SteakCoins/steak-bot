@@ -3,7 +3,11 @@
     "node": ">=14.0.0"
   },
   "scripts": {
-    "start": "pm2-runtime start ecosystem.config.js --env production"
+    "start": "pm2-runtime start ecosystem.config.js",
+    "start:prod": "NODE_ENV=production pm2 start ecosystem.config.js",
+    "stop:prod": "pm2 stop app",
+    "restart:prod": "NODE_ENV=production pm2 restart ecosystem.config.js",
+    "logs": "pm2 logs"
   },
   "dependencies": {
     "@hashgraph/sdk": "^2.0.9",

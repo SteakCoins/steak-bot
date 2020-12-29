@@ -5,7 +5,12 @@ const {
   getRandomConfig,
 } = require("./config");
 
-const { replyToTweet, resetRules, streamConnect } = require("./tweet");
+const {
+  replyToTweet,
+  retweetAndTweet,
+  resetRules,
+  streamConnect,
+} = require("./tweet");
 
 const {
   addToToken,
@@ -21,19 +26,41 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
 ) => {
   try {
     const tweetObj = JSON.parse(data);
+    log.info(tweetObj);
+
+    if (tweetObj.errors) {
+      log.info(
+        "Twitter Stream has been set into error. Restart service needed."
+      );
+      process.exit(1);
+    }
+
     const userObj = tweetObj?.includes?.users?.filter(
       (user) => user.id === tweetObj.data.author_id
     )[0];
-    log.info(`Replying to:  ${userObj.username}`);
+
+    // log.info(`Replying to:  ${userObj.username}`);
     if (userObj.username === randomConfig.treasureHandle) {
+      log.info(`The treasurer has spoken! Minting new steaks and retweeting!`);
+
       const reply = {
         tweetId: tweetObj.data.id,
-        status: "ORDER UP! Minting another 100 Tokens.",
+        status: `MEAT abound 100 new steaks have been added to the supply! #makingsteaks #steakbackedtokens https://explorer.kabuto.sh/mainnet/id/${randomConfig.mintyToken}`,
       };
       addToToken(randomConfig.mintyToken, 100, hederaCreds);
-      replyToTweet(reply, twitterCreds);
-    } else {
-      log.info(`Transfering the moneys`);
+      retweetAndTweet(reply, twitterCreds);
+
+      return;
+    }
+
+    if (
+      tweetObj?.data?.text
+        ?.toLowerCase()
+        .includes(`@${randomConfig.ourTwitterHandle.toLowerCase()}`)
+    ) {
+      log.info(
+        `Someone has tweeted at us! Transfering the token and replying.`
+      );
       const user = await upsertTransferWithTwitterId(
         userObj.id,
         1,
@@ -51,9 +78,37 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
 
       const reply = {
         tweetId: tweetObj.data.id,
-        status: `Thanks for your order @${userObj.username}! You now have ${token} Steaks! (Out of ${tokenTotal}) ~ ${user.hederaId}`,
+        status: `Thanks for your order @${userObj.username}! You now have ${token} Steaks! (Out of ${tokenTotal}) ~ https://explorer.kabuto.sh/mainnet/id/${user.hederaId}`,
       };
 
+      log.info(`Replying with message: ${reply.status}`);
+      replyToTweet(reply, twitterCreds);
+      return;
+    }
+
+    log.info(
+      `Someone tweeting or retweeted at ${randomConfig.treasureHandle} -- they get tokens!`
+    );
+    const user = await upsertTransferWithTwitterId(
+      userObj.id,
+      1,
+      randomConfig.mintyToken,
+      hederaCreds
+    );
+
+    const tokens = await getTokenTotalForTwitterId(userObj.id, hederaCreds);
+    const tokenTotal = await getTokenSupply(
+      randomConfig.mintyToken,
+      hederaCreds
+    );
+    const token = tokens[randomConfig.mintyToken];
+    log.info(`${userObj.username} has ${token}`);
+
+    const reply = {
+      tweetId: tweetObj.data.id,
+      status: `Thanks for your order @${userObj.username}! You now have ${token} Steaks! (Out of ${tokenTotal}) ~ https://explorer.kabuto.sh/mainnet/id/${user.hederaId}`,
+    };
+    if (token % 5 === 0) {
       log.info(`Replying with message: ${reply.status}`);
       replyToTweet(reply, twitterCreds);
     }
@@ -62,6 +117,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
     // Keep alive signal received. Do nothing.
     if (err.name !== `SyntaxError`) {
       log.error(err);
+      process.exit(1);
     } else {
       log.info("Keep alive...");
     }
@@ -73,6 +129,7 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
 
   const rules = [
     { value: `from:${randomConfig.treasureHandle} -is:retweet` },
+    { value: `to:${randomConfig.treasureHandle}` },
     { value: `@${randomConfig.ourTwitterHandle} -is:retweet` },
   ];
 
@@ -106,15 +163,3 @@ const replyToData = (twitterCreds, hederaCreds, randomConfig) => async (
     streamConnect(twitterCreds);
   });
 })();
-
-const express = require("express");
-const app = express();
-const port = process.env.PORT || 80;
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
-app.listen(port, () => {
-  log.info(`Example app listening at http://localhost:${port}`);
-});

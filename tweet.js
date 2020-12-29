@@ -7,6 +7,52 @@ const rulesURL = "https://api.twitter.com/2/tweets/search/stream/rules";
 const sendTweetURL = "https://api.twitter.com/1.1/statuses/update.json";
 const streamURL = "https://api.twitter.com/2/tweets/search/stream";
 
+const directMessageURL =
+  "https://api.twitter.com/1.1/direct_messages/events/new.json";
+
+const sendDirectMessage = ({ twitterId, message }, { token, consumer }) => {
+  log.info(`Sending direct messge to twiiter id ${twitterId}`);
+  return new Promise((resolve, reject) => {
+    const oauth = new OAuth.OAuth(
+      "https://api.twitter.com/oauth/request_token",
+      "https://api.twitter.com/oauth/access_token",
+      consumer.key,
+      consumer.secret,
+      "1.0A",
+      null,
+      "HMAC-SHA1"
+    );
+
+    const params = {
+      type: "message_create",
+      message_create: {
+        target: {
+          recipient_id: twitterId,
+        },
+        message_data: {
+          text: message,
+        },
+      },
+    };
+
+    oauth.post(
+      directMessageURL,
+      token.key, //test user token
+      token.secret, //test user secret
+      params,
+      function (err, data, res) {
+        if (err) {
+          console.log("yeah... no prems");
+          log.error(err);
+          return reject(err);
+        }
+        log.info(data);
+        resolve(data);
+      }
+    );
+  });
+};
+
 const replyToTweet = ({ tweetId, status }, { token, consumer }) => {
   log.info(`Replaying ${status} to tweet with id: ${tweetId}!`);
   return new Promise((resolve, reject) => {
@@ -23,6 +69,73 @@ const replyToTweet = ({ tweetId, status }, { token, consumer }) => {
     const params = {
       status,
       in_reply_to_status_id: tweetId,
+      auto_populate_reply_metadata: true,
+    };
+
+    oauth.post(
+      sendTweetURL,
+      token.key, //test user token
+      token.secret, //test user secret
+      params,
+      function (err, data, res) {
+        if (err) {
+          log.error(err);
+          return reject(err);
+        }
+        log.info(data);
+        resolve(data);
+      }
+    );
+  });
+};
+
+const retweetAndTweet = async ({ tweetId, status }, { token, consumer }) => {
+  log.info(`Retweeting tweet with id: ${tweetId}!`);
+  await new Promise((resolve, reject) => {
+    const oauth = new OAuth.OAuth(
+      "https://api.twitter.com/oauth/request_token",
+      "https://api.twitter.com/oauth/access_token",
+      consumer.key,
+      consumer.secret,
+      "1.0A",
+      null,
+      "HMAC-SHA1"
+    );
+
+    const params = {
+      id: tweetId,
+    };
+
+    oauth.post(
+      `https://api.twitter.com/1.1/statuses/retweet/${tweetId}.json`,
+      token.key, //test user token
+      token.secret, //test user secret
+      params,
+      function (err, data, res) {
+        if (err) {
+          log.error(err);
+          return reject(err);
+        }
+        log.info(data);
+        resolve(data);
+      }
+    );
+  });
+
+  log.info(`Tweeting status: ${status}`);
+  return await new Promise((resolve, reject) => {
+    const oauth = new OAuth.OAuth(
+      "https://api.twitter.com/oauth/request_token",
+      "https://api.twitter.com/oauth/access_token",
+      consumer.key,
+      consumer.secret,
+      "1.0A",
+      null,
+      "HMAC-SHA1"
+    );
+
+    const params = {
+      status,
       auto_populate_reply_metadata: true,
     };
 
@@ -151,4 +264,6 @@ module.exports = {
   setRules,
   resetRules,
   streamConnect,
+  retweetAndTweet,
+  sendDirectMessage,
 };
