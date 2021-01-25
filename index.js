@@ -1,120 +1,57 @@
+const log = require("./logger");
 const {
-  Client,
-  PrivateKey,
-  PublicKey,
-  TokenCreateTransaction,
-  TokenMintTransaction,
-  TokenId,
-  AccountBalanceQuery,
-} = require("@hashgraph/sdk");
-require("dotenv").config();
+  getTwitterCreds,
+  getHederaCreds,
+  getRandomConfig,
+} = require("./config");
 
-const adminPublicKey = "holy-moly-this-is-a-key-3IP";
+const { replyToTweet, resetRules, streamConnect } = require("./tweet");
 
-async function makeToken(
-  tokenName,
-  tokenSymbol,
-  { client, myPrivateKey, myPublicKey, myAccountId }
-) {
-  //Create a token
+const { addToToken } = require("./hedera");
 
-  const transaction = await new TokenCreateTransaction()
-    .setTokenName(tokenName)
-    .setTokenSymbol(tokenSymbol)
-    .setTreasuryAccountId(myAccountId)
-    .setInitialSupply(5000)
-    .setAdminKey(myPublicKey)
-    .setSupplyKey(myPublicKey)
-    .setWipeKey(myPublicKey)
-    .setFreezeKey(myPublicKey)
-    .freezeWith(client);
+const rules = [{ value: "from:iRunners -is:retweet" }];
 
-  //Sign the transaction with the token adminKey and the token treasury account private key
-  const signTx = await (await transaction.sign(myPrivateKey)).sign(
-    myPrivateKey
-  );
+const replyToData = (twitterCreds, hederaCreds) => (data) => {
+  const { mintyToken } = getRandomConfig();
+  try {
+    const json = JSON.parse(data);
+    log.info("Replying to: " + json.data.id);
 
-  //Sign the transaction with the client operator private key and submit to a Hedera network
-
-  const txResponse = await transaction.execute(client);
-
-  //Get the receipt of the the transaction
-
-  const receipt = await txResponse.getReceipt(client);
-
-  //Get the token ID from the receipt
-
-  const tokenId = receipt.tokenId;
-
-  console.log("The new token ID is " + tokenId);
-
-  return tokenId;
-}
-
-async function addToToken(tokenId, { client, myPrivateKey }) {
-  console.log(tokenId);
-  const transaction = await new TokenMintTransaction()
-    .setTokenId(tokenId)
-    .setAmount(100)
-    .freezeWith(client);
-
-  const signTx = await transaction.sign(myPrivateKey);
-
-  //Submit the transaction to a Hedera network
-  const txResponse = await signTx.execute(client);
-
-  //Request the receipt of the transaction
-  const receipt = await txResponse.getReceipt(client);
-
-  //Get the transaction consensus status
-  const transactionStatus = receipt.status;
-
-  console.log(
-    "The transaction consensus status " + transactionStatus.toString()
-  );
-}
-
-async function getTokenTotal(accountId, { client }) {
-  const query = new AccountBalanceQuery().setAccountId(accountId);
-
-  //Sign with the client operator private key and submit to a Hedera network
-  const tokenBalance = await query.execute(client);
-
-  console.log("The token balance(s) for this account: " + tokenBalance.tokens);
-
-  return tokenBalance;
-}
-
-async function main() {
-  //Grab your Hedera testnet account ID and private key from your .env file
-  const myAccountId = process.env.MY_ACCOUNT_ID;
-  const myPrivateKey = PrivateKey.fromString(process.env.MY_PRIVATE_KEY || "");
-  const myPublicKey = PublicKey.fromString(process.env.MY_PUBLIC_KEY);
-
-  // If we weren't able to grab it, we should throw a new error
-  if (myAccountId == null || myPrivateKey == null) {
-    throw new Error(
-      "Environment variables myAccountId and myPrivateKey must be present"
-    );
+    const reply = {
+      tweetId: json.data.id,
+      status: "Retweet!",
+    };
+    addToToken(mintyToken, 100, hederaCreds);
+    replyToTweet(reply, twitterCreds);
+  } catch (e) {
+    // Keep alive signal received. Do nothing.
   }
-  const client = Client.forTestnet();
+};
 
-  client.setOperator(myAccountId, myPrivateKey);
-  console.log("DONE!");
+(async () => {
+  const twitterCreds = getTwitterCreds();
+  const hederaCreds = getHederaCreds();
 
-  // const tokenId = await makeToken("Can we make steaks?", "MAKING STEAKS", {
-  //   client,
-  //   myPrivateKey,
-  //   myPublicKey,
-  //   myAccountId,
-  // });
+  resetRules(rules, twitterCreds);
 
-  // const tokenId = TokenId.fromString("0.0.145335");
+  const filteredStream = streamConnect(twitterCreds);
 
-  const tokenId = "0.0.145335";
+  filteredStream
+    .on("data", replyToData(twitterCreds, hederaCreds))
+    .on("error", (error) => {
+      if (error.code === "ETIMEDOUT") {
+        stream.emit("timeout");
+      }
+    });
 
-  // await addToToken(tokenId, { client, myPrivateKey });
-
-  const balance = await getTokenTotal(tokenId, { client });
-}
-main();
+  let timeout = 0;
+  filteredStream.on("timeout", () => {
+    // Reconnect on error
+    log.warn("A connection error occurred. Reconnecting…");
+    setTimeout(() => {
+      timeout++;
+      streamConnect(twitterCreds);
+    }, 2 ** timeout);
+    streamConnect(twitterCreds);
+  });
+})();

@@ -1,0 +1,63 @@
+
+const verifyCredsURL =
+  "https://api.twitter.com/1.1/account/verify_credentials.json";
+
+const checkOAuth1Creds = async () => {
+  return new Promise((resolve, reject) => {
+    const oauth = new OAuth.OAuth(
+      "https://api.twitter.com/oauth/request_token",
+      "https://api.twitter.com/oauth/access_token",
+      consumer.key,
+      consumer.secret,
+      "1.0A",
+      null,
+      "HMAC-SHA1"
+    );
+    console.log(oauth);
+    oauth.get(
+      verifyCredsURL,
+      token.key, //test user token
+      token.secret, //test user secret
+      function (err, data, res) {
+        if (err) return reject(err);
+        resolve(data);
+      }
+    );
+  });
+};
+
+
+
+async function main() {
+  //Grab your Hedera testnet account ID and private key from your .env file
+  const myAccountId = process.env.MY_ACCOUNT_ID;
+  const myPrivateKey = PrivateKey.fromString(process.env.MY_PRIVATE_KEY || "");
+  const myPublicKey = PublicKey.fromString(process.env.MY_PUBLIC_KEY);
+
+  // If we weren't able to grab it, we should throw a new error
+  if (myAccountId == null || myPrivateKey == null) {
+    throw new Error(
+      "Environment variables myAccountId and myPrivateKey must be present"
+    );
+  }
+  const client = Client.forTestnet();
+
+  client.setOperator(myAccountId, myPrivateKey);
+  console.log("DONE!");
+
+  // const tokenId = await makeToken("Can we make steaks?", "MAKING STEAKS", {
+  //   client,
+  //   myPrivateKey,
+  //   myPublicKey,
+  //   myAccountId,
+  // });
+
+  // const tokenId = TokenId.fromString("0.0.145335");
+
+  const tokenId = "0.0.145335";
+
+  // await addToToken(tokenId, { client, myPrivateKey });
+
+  const balance = await getTokenTotal(tokenId, { client });
+}
+main();

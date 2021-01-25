@@ -1,16 +1,8 @@
 {
   "dependencies": {
     "@hashgraph/sdk": "^2.0.9",
-    "app-root-path": "^3.0.0",
-    "crypto": "^1.0.1",
     "dotenv": "^8.2.0",
     "needle": "^2.5.2",
-    "oauth": "^0.9.15",
-    "oauth-1.0a": "^2.2.6",
-    "simple-node-logger": "^18.12.24",
-    "twitter": "^1.7.1",
-    "twitter-stream-api": "^0.5.2",
-    "twitter-v2": "^1.0.0",
-    "winston": "^3.3.3"
+    "oauth": "^0.9.15"
   }
 }
